@@ -2,11 +2,12 @@ import dearpygui.dearpygui as g
 import random
 import time
 from collections import deque
+
 def print_me(sender):
     print(f"Menu Item: {sender}")
 
 g.create_context()
-g.create_viewport(title='Custom Title', width=1280, height=720)
+g.create_viewport(title='obd-tool', width=1280, height=720)
 
 infoManu = "Audi"
 infoModel = "A4"
@@ -15,6 +16,15 @@ infoAge = 2008
 infoEngine = "BRD"
 infoBody = "Estate"
 infoMiles = 192834
+
+def viewLogWindow():
+    pass
+
+def viewHelpWindow():
+    pass
+
+def viewSettingsWindow():
+    pass
 
 def viewTroubleCodesWindow():
     with g.window(label="Trouble Codes"):
@@ -107,25 +117,17 @@ def viewGraphsWindow():
     
 
 with g.viewport_menu_bar():
-    with g.menu(label="File"):
-        g.add_menu_item(label="Save", callback=print_me)
-        g.add_menu_item(label="Save As", callback=print_me)
-
-        with g.menu(label="Settings"):
-            g.add_menu_item(label="Setting 1", callback=print_me, check=True)
-            g.add_menu_item(label="Setting 2", callback=print_me)
-
-    g.add_menu_item(label="Help", callback=print_me)
-
-    with g.menu(label="Widget Items"):
-        g.add_checkbox(label="Pick Me", callback=print_me)
-        g.add_button(label="Press Me", callback=print_me)
-        g.add_color_picker(label="Color Me", callback=print_me)
-
     with g.menu(label="View"):
         g.add_checkbox(label="Trouble codes", callback=viewTroubleCodesWindow)
         g.add_checkbox(label="ECU Information", callback=viewECUInformationWindow)
         g.add_checkbox(label="Graphs", callback=viewGraphsWindow)
+        g.add_checkbox(label="Console log", callback=viewLogWindow)
+
+    g.add_menu_item(label="Settings", callback=viewSettingsWindow)
+    g.add_menu_item(label="Help", callback=viewHelpWindow)
+
+
+
 
 
 
