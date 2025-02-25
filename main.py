@@ -1,10 +1,20 @@
 import dearpygui.dearpygui as g
-
+import random
+import time
+from collections import deque
 def print_me(sender):
     print(f"Menu Item: {sender}")
 
 g.create_context()
-g.create_viewport(title='Custom Title', width=600, height=200)
+g.create_viewport(title='Custom Title', width=1280, height=720)
+
+infoManu = "Audi"
+infoModel = "A4"
+infoVin = "WAUZZ00FH329JSA93JBN"
+infoAge = 2008
+infoEngine = "BRD"
+infoBody = "Estate"
+infoMiles = 192834
 
 def viewTroubleCodesWindow():
     with g.window(label="Trouble Codes"):
@@ -29,10 +39,72 @@ def viewTroubleCodesWindow():
                 g.add_text("Random/Multiple Cylinder Misfire Detected")
 
 def viewECUInformationWindow():
+    with g.window(label="ECU Information"):
+        with g.table():
+            g.add_table_column(label="Name")
+            g.add_table_column(label="Information")
+
+            with g.table_row():
+                g.add_text("Manufacturer")
+                g.add_text(infoManu)
+            with g.table_row():
+                g.add_text("Model")
+                g.add_text(infoModel)
+            with g.table_row():
+                g.add_text("VIN")
+                g.add_text(infoVin)
+            with g.table_row():
+                g.add_text("Production Date")
+                g.add_text(f'{infoAge}')
+            with g.table_row():
+                g.add_text("Body type")
+                g.add_text(infoBody)
+            with g.table_row():
+                g.add_text("Engine type")
+                g.add_text(infoEngine)
+            with g.table_row():
+                g.add_text("Odometer (mls)")
+                g.add_text(infoMiles)
+            
+
+def ViewEngineRPMGraph():
+    with g.window(label="Graph Window", width=600, height=400):
+        # Create a plot
+        with g.plot(label="Line Graph", height=300, width=500):
+            # Add x and y axes
+            g.add_plot_axis(g.mvXAxis, label="X Axis")
+            g.add_plot_axis(g.mvYAxis, label="Y Axis", id="y_axis")
+
+            # Generate some random data
+            x_data = list(range(10))
+            y_data = [random.randint(0, 100) for _ in range(10)]
+
+            # Add a line series to the plot
+            g.add_line_series(x_data, y_data, label="Random Data", parent="y_axis")
+
+def wheelSpeed():
+    pass
+def coolantTemp():
+    pass
+def oilTemp():
     pass
 
 def viewGraphsWindow():
-    pass
+    with g.window(label="Graphs", width=500, height=500):
+        with g.table(header_row=False):
+            g.add_table_column()
+            g.add_table_column()
+            g.add_table_column()
+            g.add_table_column()
+
+
+            with g.table_row():
+                g.add_button(label="Engine RPM", callback=ViewEngineRPMGraph, width=90, height=60)
+                g.add_button(label="Wheel Speed", callback=wheelSpeed, width=90, height=60)
+                g.add_button(label="Coolant temp", callback=coolantTemp, width=90, height=60)
+                g.add_button(label="Oil temp", callback=oilTemp, width=90, height=60)
+
+    
 
 with g.viewport_menu_bar():
     with g.menu(label="File"):
