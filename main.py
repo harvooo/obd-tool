@@ -108,24 +108,16 @@ def viewGraphsWindow():
 
 with g.viewport_menu_bar():
     with g.menu(label="File"):
-        g.add_menu_item(label="Save", callback=print_me)
-        g.add_menu_item(label="Save As", callback=print_me)
-
-        with g.menu(label="Settings"):
-            g.add_menu_item(label="Setting 1", callback=print_me, check=True)
-            g.add_menu_item(label="Setting 2", callback=print_me)
-
-    g.add_menu_item(label="Help", callback=print_me)
-
-    with g.menu(label="Widget Items"):
-        g.add_checkbox(label="Pick Me", callback=print_me)
-        g.add_button(label="Press Me", callback=print_me)
-        g.add_color_picker(label="Color Me", callback=print_me)
+        g.add_menu_item(label="Save a report", callback=print_me)
+        g.add_menu_item(label="Personalisation", callback=print_me)
+        g.add_menu_item(label="Settings", callback=print_me)
 
     with g.menu(label="View"):
         g.add_checkbox(label="Trouble codes", callback=viewTroubleCodesWindow)
         g.add_checkbox(label="ECU Information", callback=viewECUInformationWindow)
         g.add_checkbox(label="Graphs", callback=viewGraphsWindow)
+
+    g.add_menu_item(label="Help", callback=print_me)
 
 
 
