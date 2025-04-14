@@ -40,20 +40,24 @@ logger = logging.getLogger(__name__) # Logger for this main module
 
 
 def startConnection():
+# --- OBD Connection Setup ---
+    obd_connector = OBDConnector()
+    ports = obd.scan_serial()
+    logger.info(f"Available serial ports: {ports}") # Use logger
+    selected_port = ports[0] if ports else None # Use the first found port
     if selected_port:
         logger.info(f"Attempting to connect to: {selected_port}") # Use logger
         obd_connector.connect(selected_port)
     else:
         logger.warning("No OBD adapter found. Please ensure it's connected.") # Use logger
-# --- End OBD Connection Setup ---
 
-# --- OBD Connection Setup ---
-obd_connector = OBDConnector()
-ports = obd.scan_serial()
-logger.info(f"Available serial ports: {ports}") # Use logger
-selected_port = ports[0] if ports else None # Use the first found port
 startConnection()
 
+# --- End OBD Connection Setup ---
+
+def closeConnection():
+    pass
+    
 g.create_context()
 g.create_viewport(title='OBD Tool', width=1280, height=720) # Changed title
 
@@ -340,7 +344,9 @@ def viewLoggerWindow():
     with g.window(label=window_label, width=800, height=400, tag=window_tag,
                   on_close=lambda s, a, u: on_window_close(s, a, window_label)):
         g.set_item_user_data(window_tag, window_label)
-        g.add_button(label="Retry", callback=startConnection, width=80, height=25)
+        g.add_button(label="Retry Connection", callback=startConnection, width=150, height=25)
+        g.add_same_line()
+        g.add_button(label="Close Connection", callback=closeConnection, width=150, height=25)
         # Read-only text area to display logs
         g.add_input_text(tag="logger_output", multiline=True, readonly=True, width=-1, height=-1, default_value="")
         # Initialize content
@@ -349,10 +355,6 @@ def viewLoggerWindow():
 
 # Open logger window upon startup
 viewLoggerWindow()
-
-def retryConnection():
-    # Complete function to retry the initial connection phase if a user forgot to plug in
-    pass
 
 def print_me():
     pass
