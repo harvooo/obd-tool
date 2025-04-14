@@ -39,22 +39,20 @@ logger = logging.getLogger(__name__) # Logger for this main module
 # --- End Logging Setup ---
 
 
+def startConnection():
+    if selected_port:
+        logger.info(f"Attempting to connect to: {selected_port}") # Use logger
+        obd_connector.connect(selected_port)
+    else:
+        logger.warning("No OBD adapter found. Please ensure it's connected.") # Use logger
+# --- End OBD Connection Setup ---
+
 # --- OBD Connection Setup ---
 obd_connector = OBDConnector()
 ports = obd.scan_serial()
 logger.info(f"Available serial ports: {ports}") # Use logger
 selected_port = ports[0] if ports else None # Use the first found port
-
-if selected_port:
-    logger.info(f"Attempting to connect to: {selected_port}") # Use logger
-    obd_connector.connect(selected_port)
-else:
-    logger.warning("No OBD adapter found. Please ensure it's connected.") # Use logger
-# --- End OBD Connection Setup ---
-
-
-def print_me(sender):
-    logger.info(f"Menu Item Clicked: {sender}") # Use logger
+startConnection()
 
 g.create_context()
 g.create_viewport(title='OBD Tool', width=1280, height=720) # Changed title
@@ -72,7 +70,7 @@ window_visibility = {
     "Trouble Codes": False,
     "ECU Information": False,
     "Graphs": False,
-    "Logger": False # Add logger state
+    "Logger": False
 }
 
 def toggle_window(sender, app_data, user_data):
@@ -101,9 +99,9 @@ def toggle_window(sender, app_data, user_data):
         elif window_label == "Logger":
              viewLoggerWindow()
         # Ensure the newly created window's visibility matches the checkbox
-        if g.does_item_exist(window_tag):
-            g.set_item_callback(window_tag, lambda s, a, u: on_window_close(u, window_label)) # Set close callback
-            g.set_item_user_data(window_tag, window_tag) # Set user data for close callback
+        #if g.does_item_exist(window_tag):
+        #    g.set_item_callback(window_tag, lambda s, a, u: on_window_close(u, window_label)) # Set close callback
+        #    g.set_item_user_data(window_tag, window_tag) # Set user data for close callback
 
 
 def on_window_close(sender, app_data, user_data):
@@ -303,6 +301,24 @@ def viewGraphsWindow():
             g.add_button(label="Oil temp", callback=oilTemp, width=100, height=60)
 
 
+
+def update_logger_window_content():
+    """Updates the content of the logger window if it's visible and logs changed."""
+    global last_log_count
+    window_tag = "window_Logger"
+    output_tag = "logger_output"
+
+    if g.does_item_exist(window_tag) and g.is_item_visible(window_tag):
+        if g.does_item_exist(output_tag):
+            current_log_count = len(list_handler.log_records)
+            # Only update if the number of logs has changed
+            if current_log_count != last_log_count:
+                log_text = "\n".join(list(list_handler.log_records))
+                g.set_value(output_tag, log_text)
+                # Auto-scroll? DPG doesn't have easy auto-scroll for input_text.
+                # A child window with auto-scroll might be better if needed.
+                last_log_count = current_log_count
+
 # --- Logger Window ---
 last_log_count = 0
 
@@ -324,29 +340,23 @@ def viewLoggerWindow():
     with g.window(label=window_label, width=800, height=400, tag=window_tag,
                   on_close=lambda s, a, u: on_window_close(s, a, window_label)):
         g.set_item_user_data(window_tag, window_label)
+        g.add_button(label="Retry", callback=startConnection, width=80, height=25)
         # Read-only text area to display logs
         g.add_input_text(tag="logger_output", multiline=True, readonly=True, width=-1, height=-1, default_value="")
         # Initialize content
         last_log_count = -1
         update_logger_window_content()
 
+# Open logger window upon startup
+viewLoggerWindow()
 
-def update_logger_window_content():
-    """Updates the content of the logger window if it's visible and logs changed."""
-    global last_log_count
-    window_tag = "window_Logger"
-    output_tag = "logger_output"
+def retryConnection():
+    # Complete function to retry the initial connection phase if a user forgot to plug in
+    pass
 
-    if g.does_item_exist(window_tag) and g.is_item_visible(window_tag):
-        if g.does_item_exist(output_tag):
-            current_log_count = len(list_handler.log_records)
-            # Only update if the number of logs has changed
-            if current_log_count != last_log_count:
-                log_text = "\n".join(list(list_handler.log_records))
-                g.set_value(output_tag, log_text)
-                # Auto-scroll? DPG doesn't have easy auto-scroll for input_text.
-                # A child window with auto-scroll might be better if needed.
-                last_log_count = current_log_count
+def print_me():
+    pass
+
 
 # --- Menu Bar ---
 with g.viewport_menu_bar():
