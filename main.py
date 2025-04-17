@@ -38,26 +38,38 @@ root_logger.addHandler(list_handler)
 logger = logging.getLogger(__name__) # Logger for this main module
 # --- End Logging Setup ---
 
+# --- Global Variables ---
+obd_connector = None
+selected_port = None
+# --- End Global Variables ---
+
 
 def startConnection():
+    global obd_connector, selected_port # Use global variables
 # --- OBD Connection Setup ---
-    obd_connector = OBDConnector()
+    obd_connector = OBDConnector() # Modify the global instance
     ports = obd.scan_serial()
     logger.info(f"Available serial ports: {ports}") # Use logger
-    selected_port = ports[0] if ports else None # Use the first found port
+    selected_port = ports[0] if ports else None # Modify the global variable
     if selected_port:
         logger.info(f"Attempting to connect to: {selected_port}") # Use logger
         obd_connector.connect(selected_port)
     else:
         logger.warning("No OBD adapter found. Please ensure it's connected.") # Use logger
 
-startConnection()
+startConnection() # Attempt initial connection
 
 # --- End OBD Connection Setup ---
 
 def closeConnection():
-    pass
-    
+    global obd_connector # Use global variable
+    if obd_connector:
+        obd_connector.close()
+        logger.info("OBD connection closed.")
+    else:
+        logger.warning("Attempted to close connection, but no connector object exists.")
+
+
 g.create_context()
 g.create_viewport(title='OBD Tool', width=1280, height=720) # Changed title
 
@@ -152,21 +164,28 @@ def viewTroubleCodesWindow():
             # --- End Placeholder ---
 
 def viewECUInformationWindow():
+    global obd_connector, selected_port # Need access to globals
     window_label = "ECU Information"
     window_tag = f"window_{window_label.replace(' ', '_')}"
     if g.does_item_exist(window_tag):
         if not g.is_item_visible(window_tag):
              g.show_item(window_tag)
         # Update dynamic data when shown
-        if g.does_item_exist("vin_display"):
-             g.set_value("vin_display", obd_connector.get_vin())
-        if g.does_item_exist("connection_status_display"):
-             status = "Connected" if obd_connector.connection and obd_connector.connection.is_connected() else "Disconnected"
-             g.set_value("connection_status_display", status)
+        if obd_connector: # Check if connector exists
+            if g.does_item_exist("vin_display"):
+                 g.set_value("vin_display", obd_connector.get_vin())
+            if g.does_item_exist("connection_status_display"):
+                 status = "Connected" if obd_connector.connection and obd_connector.connection.is_connected() else "Disconnected"
+                 g.set_value("connection_status_display", status)
+            if g.does_item_exist("port_display"): # Add tag for port display
+                 g.set_value("port_display", selected_port if selected_port else "N/A")
         # g.focus_item(window_tag)
         return
 
-    current_vin = obd_connector.get_vin()
+    current_vin = obd_connector.get_vin() if obd_connector else "N/A"
+    current_status = "Connected" if obd_connector and obd_connector.connection and obd_connector.connection.is_connected() else "Disconnected"
+    current_port = selected_port if selected_port else "N/A"
+
     with g.window(label=window_label, width=500, height=400, tag=window_tag,
                   on_close=lambda s, a, u: on_window_close(s, a, window_label)):
         g.set_item_user_data(window_tag, window_label)
@@ -185,11 +204,10 @@ def viewECUInformationWindow():
             with g.table_row(): g.add_text("Odometer (mls)"); g.add_text(f"{infoMiles:,}")
             with g.table_row():
                 g.add_text("OBD Connection")
-                status = "Connected" if obd_connector.connection and obd_connector.connection.is_connected() else "Disconnected"
-                g.add_text(status, tag="connection_status_display")
+                g.add_text(current_status, tag="connection_status_display")
             with g.table_row():
                 g.add_text("OBD Port")
-                g.add_text(selected_port if selected_port else "N/A")
+                g.add_text(current_port, tag="port_display") # Tag added
 
 # --- Data for Graphs (Example) ---
 max_data_points = 100
@@ -201,17 +219,17 @@ graph_update_interval = 0.2 # Update graph data every 0.2 seconds
 
 def update_graph_data():
     """ Call this periodically to update graph data sources """
-    global last_graph_update_time
+    global last_graph_update_time, obd_connector # Need global connector
     current_time_abs = time.time()
-    
+
     # Limit update frequency
     if current_time_abs - last_graph_update_time < graph_update_interval:
         return
-        
+
     last_graph_update_time = current_time_abs
     current_time_rel = current_time_abs - start_time # Time since start
 
-    if obd_connector.connection and obd_connector.connection.is_connected():
+    if obd_connector and obd_connector.connection and obd_connector.connection.is_connected():
         current_rpm = obd_connector.rpm # Get latest RPM (updated in main loop)
         rpm_data.append(current_rpm)
         time_data.append(current_time_rel)
@@ -221,9 +239,12 @@ def update_graph_data():
              if g.does_item_exist("rpm_series"):
                  g.set_value("rpm_series", [list(time_data), list(rpm_data)])
                  # Adjust axes limits dynamically but avoid jittering
-                 g.set_axis_limits("rpm_time_axis", time_data[0], time_data[-1])
-                 min_rpm = min(rpm_data)
-                 max_rpm = max(rpm_data)
+                 try: # Add try-except for safety if time_data becomes empty
+                     g.set_axis_limits("rpm_time_axis", time_data[0], time_data[-1])
+                 except IndexError:
+                     pass # Don't update limits if data is empty
+                 min_rpm = min(rpm_data) if rpm_data else 0
+                 max_rpm = max(rpm_data) if rpm_data else 0
                  y_min_limit = min_rpm - 500 if min_rpm > 500 else 0
                  y_max_limit = max_rpm + 500 if max_rpm > 100 else 8000 # Default max if idle
                  # Only update if limits significantly change? Or just set them.
@@ -236,10 +257,13 @@ def update_graph_data():
         # Update graph to show disconnected state if visible
         if g.does_item_exist("engine_rpm_plot") and g.is_item_visible("engine_rpm_plot"):
              if g.does_item_exist("rpm_series"):
-                 g.set_value("rpm_series", [list(time_data), list(rpm_data)])
-                 g.set_axis_limits_auto("rpm_time_axis") # Auto time when disconnected? Maybe keep last range?
-                 # g.set_axis_limits("rpm_time_axis", time_data[0], time_data[-1]) # Keep time range
-                 g.set_axis_limits("rpm_y_axis", 0, 8000) # Reset to default range
+                try: # Add try-except for safety
+                     g.set_value("rpm_series", [list(time_data), list(rpm_data)])
+                     # g.set_axis_limits_auto("rpm_time_axis") # Auto time when disconnected? Maybe keep last range?
+                     g.set_axis_limits("rpm_time_axis", time_data[0], time_data[-1]) # Keep time range
+                     g.set_axis_limits("rpm_y_axis", 0, 8000) # Reset to default range
+                except IndexError:
+                    pass # Don't update if data is empty
 
 def ViewEngineRPMGraph():
     window_label = "Engine RPM Graph" # Give graph its own window
@@ -305,7 +329,6 @@ def viewGraphsWindow():
             g.add_button(label="Oil temp", callback=oilTemp, width=100, height=60)
 
 
-
 def update_logger_window_content():
     """Updates the content of the logger window if it's visible and logs changed."""
     global last_log_count
@@ -317,7 +340,8 @@ def update_logger_window_content():
             current_log_count = len(list_handler.log_records)
             # Only update if the number of logs has changed
             if current_log_count != last_log_count:
-                log_text = "\n".join(list(list_handler.log_records))
+                log_text = "
+".join(list(list_handler.log_records))
                 g.set_value(output_tag, log_text)
                 # Auto-scroll? DPG doesn't have easy auto-scroll for input_text.
                 # A child window with auto-scroll might be better if needed.
@@ -418,16 +442,19 @@ while g.is_dearpygui_running():
 
     # Call OBD update functions periodically
     if current_time - last_data_update > data_update_interval:
-        obd_connector.update_data() # Update RPM/Speed
+        if obd_connector: # Check if connector exists before using it
+            obd_connector.update_data() # Update RPM/Speed
         last_data_update = current_time
 
         # Update dynamic UI elements if they exist and are visible
-        if window_visibility["ECU Information"] and g.does_item_exist("window_ECU_Information") and g.is_item_visible("window_ECU_Information"):
+        if obd_connector and window_visibility["ECU Information"] and g.does_item_exist("window_ECU_Information") and g.is_item_visible("window_ECU_Information"):
             if g.does_item_exist("vin_display"):
                 g.set_value("vin_display", obd_connector.get_vin())
             if g.does_item_exist("connection_status_display"):
                 status = "Connected" if obd_connector.connection and obd_connector.connection.is_connected() else "Disconnected"
                 g.set_value("connection_status_display", status)
+            if g.does_item_exist("port_display"): # Update port display too
+                 g.set_value("port_display", selected_port if selected_port else "N/A")
 
     # Update graph data (handles its own timing)
     update_graph_data()
@@ -441,6 +468,6 @@ while g.is_dearpygui_running():
 
 # --- Cleanup ---
 logger.info("Shutting down...") # Use logger
-obd_connector.close() # Close OBD connection gracefully
+closeConnection() # Call the modified close function
 g.destroy_context()
 logger.info("Application closed.") # Use logger
