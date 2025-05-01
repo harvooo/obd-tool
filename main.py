@@ -1,5 +1,4 @@
 import dearpygui.dearpygui as g
-import random
 import time
 from collections import deque
 import obd # Import obd library
@@ -340,8 +339,7 @@ def update_logger_window_content():
             current_log_count = len(list_handler.log_records)
             # Only update if the number of logs has changed
             if current_log_count != last_log_count:
-                log_text = "
-".join(list(list_handler.log_records))
+                log_text = "\n".join(list(list_handler.log_records)) # Join with newline
                 g.set_value(output_tag, log_text)
                 # Auto-scroll? DPG doesn't have easy auto-scroll for input_text.
                 # A child window with auto-scroll might be better if needed.
@@ -368,9 +366,9 @@ def viewLoggerWindow():
     with g.window(label=window_label, width=800, height=400, tag=window_tag,
                   on_close=lambda s, a, u: on_window_close(s, a, window_label)):
         g.set_item_user_data(window_tag, window_label)
-        g.add_button(label="Retry Connection", callback=startConnection, width=150, height=25)
-        g.add_same_line()
-        g.add_button(label="Close Connection", callback=closeConnection, width=150, height=25)
+        with g.group(horizontal=True):
+            g.add_button(label="Retry Connection", callback=startConnection, width=150, height=25)
+            g.add_button(label="Close Connection", callback=closeConnection, width=150, height=25)
         # Read-only text area to display logs
         g.add_input_text(tag="logger_output", multiline=True, readonly=True, width=-1, height=-1, default_value="")
         # Initialize content
