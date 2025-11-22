@@ -40,6 +40,7 @@ logger = logging.getLogger(__name__) # Logger for this main module
 # --- Global Variables ---
 obd_connector = None
 selected_port = None
+USE_FAKE_DATA = True # Set this to True to use the fake data source
 # --- End Global Variables ---
 
 
@@ -47,14 +48,19 @@ def startConnection():
     global obd_connector, selected_port # Use global variables
 # --- OBD Connection Setup ---
     obd_connector = OBDConnector() # Modify the global instance
-    ports = obd.scan_serial()
-    logger.info(f"Available serial ports: {ports}") # Use logger
-    selected_port = ports[0] if ports else None # Modify the global variable
-    if selected_port:
-        logger.info(f"Attempting to connect to: {selected_port}") # Use logger
-        obd_connector.connect(selected_port)
+
+    if USE_FAKE_DATA:
+        logger.info("Using fake OBD data source.")
+        obd_connector.connect(use_fake_data=True)
     else:
-        logger.warning("No OBD adapter found. Please ensure it's connected.") # Use logger
+        ports = obd.scan_serial()
+        logger.info(f"Available serial ports: {ports}") # Use logger
+        selected_port = ports[0] if ports else None # Modify the global variable
+        if selected_port:
+            logger.info(f"Attempting to connect to: {selected_port}") # Use logger
+            obd_connector.connect(port=selected_port)
+        else:
+            logger.warning("No OBD adapter found. Please ensure it's connected.") # Use logger
 
 startConnection() # Attempt initial connection
 
